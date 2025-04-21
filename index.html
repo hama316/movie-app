@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎬 Movie App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #000000, #8b0000, #000000);
+      color: white;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 1.5em;
+    }
+
+    .category-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 10px;
+    }
+
+    .category-buttons button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin: 5px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      font-size: 0.9em;
+    }
+
+    .category-buttons button:hover,
+    .category-buttons button.active {
+      background: #e50914;
+    }
+
+    #movies {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      padding: 10px;
+    }
+
+    .movie-card {
+      background: #1a1a1a;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 300px;
+      box-shadow: 0 4px 15px rgba(255, 0, 0, 0.2);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .movie-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 20px rgba(255, 0, 0, 0.4);
+    }
+
+    img {
+      width: 100%;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .title {
+      font-size: 1em;
+      margin: 10px 0 5px;
+      color: #e50914;
+    }
+
+    .meta {
+      font-size: 0.8em;
+      color: #ccc;
+      margin-bottom: 10px;
+    }
+
+    #player-view {
+      display: none;
+      padding: 15px;
+    }
+
+    #back-btn {
+      background: #e50914;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 0.9em;
+    }
+
+    #back-btn:hover {
+      background: #b0060f;
+    }
+
+    .player-wrapper {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .player-wrapper iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    @media (min-width: 600px) {
+      .movie-card {
+        width: calc(50% - 20px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎬 Movie Categories</h1>
+
+  <div class="category-buttons" id="category-buttons"></div>
+  <div id="movies"></div>
+
+  <div id="player-view">
+    <button id="back-btn">⬅ Back to Movies</button>
+    <h2 id="movie-title">Loading...</h2>
+    <div class="player-wrapper">
+      <iframe id="movie-frame" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    const sheetId = "190rE2JoHqtflL5DMrZTCKmodz4YzDeYJgvU7PNc4icw";
+    const apiKey = "AIzaSyCYvuU3Lw812dKWXdgbQxwbThA-1rA40xA";
+    const range = "Movie_Sheet_Template_20250416_165912!A2:E999";
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
+
+    const moviesDiv = document.getElementById("movies");
+    const playerView = document.getElementById("player-view");
+    const movieFrame = document.getElementById("movie-frame");
+    const movieTitle = document.getElementById("movie-title");
+    const backBtn = document.getElementById("back-btn");
+    const categoryButtons = document.getElementById("category-buttons");
+
+    let allMovies = [];
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        allMovies = data.values || [];
+        const categories = [...new Set(allMovies.map(row => row[3]))];
+
+        categories.forEach(category => {
+          const btn = document.createElement("button");
+          btn.textContent = category;
+          btn.onclick = () => {
+            document.querySelectorAll(".category-buttons button").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            filterByCategory(category);
+          };
+          categoryButtons.appendChild(btn);
+        });
+
+        if (categories.length > 0) {
+          filterByCategory(categories[0]);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching data:", err);
+        moviesDiv.innerHTML = "<p>Failed to load movies.</p>";
+      });
+
+    function filterByCategory(category) {
+      const filtered = allMovies.filter(row => row[3] === category);
+      displayMovies(filtered);
+    }
+
+    function displayMovies(movies) {
+      moviesDiv.innerHTML = "";
+      moviesDiv.style.display = "flex";
+      playerView.style.display = "none";
+
+      movies.forEach(row => {
+        const [title, thumbnail, movieUrl, category, year] = row;
+
+        const card = document.createElement("div");
+        card.className = "movie-card";
+        card.innerHTML = `
+          <img src="${thumbnail}" alt="${title}">
+          <div class="title">${title}</div>
+          <div class="meta">${category} | ${year}</div>
+        `;
+
+        card.addEventListener("click", () => {
+          moviesDiv.style.display = "none";
+          playerView.style.display = "block";
+          movieFrame.src = movieUrl;
+          movieTitle.textContent = title;
+        });
+
+        moviesDiv.appendChild(card);
+      });
+    }
+
+    backBtn.addEventListener("click", () => {
+      movieFrame.src = "";
+      playerView.style.display = "none";
+      moviesDiv.style.display = "flex";
+    });
+  </script>
+</body>
+</html>
